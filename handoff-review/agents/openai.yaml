@@ -1,0 +1,4 @@
+interface:
+  display_name: "Handoff Review"
+  short_description: "Explicit handoff for agent plan review"
+  default_prompt: "Use $handoff-review to package this implementation plan for independent agent review."
