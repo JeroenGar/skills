@@ -110,12 +110,14 @@ Always use interactive reviewer mode. Do not use `claude -p`, `claude --print`, 
 
 Always include both Claude Code and Codex command templates. Do not ask the user which reviewer target they want first; the user can decide which command, or both commands, to run. Replace placeholders with concrete paths for the current loop. For the default two-reviewer loop, use separate reviewer-specific artifacts:
 
+For Claude Code, use `--permission-mode auto` so file inspection and test commands can proceed with fewer prompts while still avoiding full permission bypass.
+
 ```bash
 REPO_ROOT="<repo-root>"
 REQUEST="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-claude-review-request.md"
 RESPONSE="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-claude-response.md"
 cd "$REPO_ROOT"
-claude "Read and follow the review request at $REQUEST. Write the Markdown review to $RESPONSE."
+claude --permission-mode auto "Read and follow the review request at $REQUEST. Write the Markdown review to $RESPONSE."
 test -s "$RESPONSE" && echo "Claude response written: $RESPONSE" || echo "Claude response missing or empty. If Claude printed Markdown instead, save it unchanged to: $RESPONSE"
 ```
 
