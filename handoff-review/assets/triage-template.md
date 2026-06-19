@@ -3,16 +3,16 @@
 ## Artifact Links
 
 - Handoff:
-- Review request:
-- Review response:
+- Review request(s):
+- Review response(s):
 - Revised plan:
 
 ## Bottom Line
 
 ## Finding Triage
 
-| Finding | Reviewer Claim | Classification | Rationale | Provenance |
-|---|---|---|---|---|
+| Finding | Reviewer | Reviewer Claim | Classification | Rationale | Provenance |
+|---|---|---|---|---|---|
 
 ## Accepted Changes
 
