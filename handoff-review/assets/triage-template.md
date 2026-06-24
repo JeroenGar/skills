@@ -3,7 +3,6 @@
 ## Artifact Links
 
 - Handoff:
-- Review request(s):
 - Review response(s):
 - Revised plan:
 

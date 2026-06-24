@@ -1,6 +1,6 @@
 ---
 name: handoff-review
-description: Use only when the user explicitly asks for an AI-agent handoff or plan review, including handoff-review to Claude/Codex, reviewer prompts, external review ingestion, feedback triage, or plan revision before implementation. Produces `.agent-handoffs/` artifacts, preserves provenance, and requires reviewers to verify repository claims directly.
+description: Use only when the user explicitly asks for an AI-agent handoff or plan review, including handoff-review to Claude/Codex, reviewer instructions, external review ingestion, feedback triage, or plan revision before implementation. Produces `.agent-handoffs/` artifacts, preserves provenance, and requires reviewers to verify repository claims directly.
 ---
 
 # Handoff Review
@@ -9,13 +9,12 @@ Use this skill only for an explicit plan-review loop. Do not apply it silently t
 
 The loop is:
 
-1. Create a handoff package.
-2. Create reviewer prompts.
-3. Give the user exact interactive commands to run the reviewer agent.
-4. Ingest the review.
-5. Triage feedback critically.
-6. Report a concise digest.
-7. Revise the plan only after the triage is clear.
+1. Create one handoff package with reviewer instructions included.
+2. Give the user exact interactive commands to run Claude Code and Codex.
+3. Ingest the review response artifacts.
+4. Triage feedback critically.
+5. Report a concise digest.
+6. Revise the plan only after the triage is clear.
 
 ## Artifact Folder
 
@@ -36,19 +35,10 @@ Name files with a stable topic slug:
 
 ```text
 .agent-handoffs/YYYY-MM-DD-topic-handoff.md
-.agent-handoffs/YYYY-MM-DD-topic-review-request.md
-.agent-handoffs/YYYY-MM-DD-topic-review-response.md
+.agent-handoffs/YYYY-MM-DD-topic-claude-response.md
+.agent-handoffs/YYYY-MM-DD-topic-codex-response.md
 .agent-handoffs/YYYY-MM-DD-topic-review-triage.md
 .agent-handoffs/YYYY-MM-DD-topic-revised-plan.md
-```
-
-For multi-reviewer loops, create one request and response per reviewer so artifacts cannot overwrite each other:
-
-```text
-.agent-handoffs/YYYY-MM-DD-topic-claude-review-request.md
-.agent-handoffs/YYYY-MM-DD-topic-claude-response.md
-.agent-handoffs/YYYY-MM-DD-topic-codex-review-request.md
-.agent-handoffs/YYYY-MM-DD-topic-codex-response.md
 ```
 
 ## Roles
@@ -74,6 +64,7 @@ Include:
 - Provenance ledger.
 - Assumptions and open questions.
 - Known risks and test strategy.
+- Reviewer instructions and response artifact paths for Claude Code and Codex.
 
 Mark each important claim with provenance:
 
@@ -83,28 +74,24 @@ Mark each important claim with provenance:
 - `external`: supplied by another agent or external reviewer.
 - `unverified`: not yet checked.
 
-## Reviewer Prompt
+## Reviewer Instructions
 
-Use `assets/review-request-template.md` as the structure.
-
-Create separate concrete review request artifacts for Claude Code and Codex by default. Use the same handoff package path in both prompts, but use distinct reviewer names and response artifact paths.
-
-The reviewer prompt must instruct the reviewer agent to:
+Put reviewer instructions directly in the handoff package. Do not create separate review request files by default. The handoff must instruct each reviewer agent to:
 
 - Treat the handoff as a map, not ground truth.
 - Inspect the repository directly before accepting factual claims.
 - Check assumptions, file references, implementation order, risks, tests, internal contradictions, security concerns, and simpler alternatives.
 - Identify which findings are blocking versus optional.
-- Write only to the named review response artifact unless the user explicitly approves another edit.
-- Write its Markdown review directly to the named review response artifact when it has file-write access.
+- Write only to its named review response artifact unless the user explicitly approves another edit.
+- Write its Markdown review directly to its named response artifact when it has file-write access.
 - Stay interactive and ask the user in the terminal if anything is unclear.
 - Return the exact Markdown review in chat/stdout only if it cannot write the artifact.
 
-Always save each exact prompt. Prefer having each reviewer agent create its named response artifact itself; if a reviewer can only return text, tell the user to save that returned text unchanged as that reviewer's response artifact.
+Prefer having each reviewer agent create its named response artifact itself. If a reviewer can only return text, tell the user to save that returned text unchanged as that reviewer's response artifact.
 
 ## User-Run Reviewer Commands
 
-Do not run external reviewer CLIs yourself by default. After creating the handoff and review request artifacts, give the user copy-pasteable interactive commands so the user can watch progress, answer questions, and own any external data transfer, authentication, and local permission prompts.
+Do not run external reviewer CLIs yourself by default. After creating the handoff artifact, give the user copy-pasteable interactive commands so the user can watch progress, answer questions, and own any external data transfer, authentication, and local permission prompts.
 
 Always use interactive reviewer mode. Do not use `claude -p`, `claude --print`, `codex exec`, `codex review`, or other fully automated/non-interactive reviewer commands unless the user explicitly asks for automation.
 
@@ -114,19 +101,19 @@ For Claude Code, use `--permission-mode auto` so file inspection and test comman
 
 ```bash
 REPO_ROOT="<repo-root>"
-REQUEST="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-claude-review-request.md"
+HANDOFF="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-handoff.md"
 RESPONSE="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-claude-response.md"
 cd "$REPO_ROOT"
-claude --permission-mode auto "Read and follow the review request at $REQUEST. Write the Markdown review to $RESPONSE."
+claude --permission-mode auto "Read the handoff at $HANDOFF. Act as the Claude reviewer. Write the Markdown review to $RESPONSE."
 test -s "$RESPONSE" && echo "Claude response written: $RESPONSE" || echo "Claude response missing or empty. If Claude printed Markdown instead, save it unchanged to: $RESPONSE"
 ```
 
 ```bash
 REPO_ROOT="<repo-root>"
-REQUEST="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-codex-review-request.md"
+HANDOFF="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-handoff.md"
 RESPONSE="$REPO_ROOT/.agent-handoffs/YYYY-MM-DD-topic-codex-response.md"
 cd "$REPO_ROOT"
-codex -C "$REPO_ROOT" --sandbox workspace-write --ask-for-approval on-request "Read and follow the review request at $REQUEST. Write the Markdown review to $RESPONSE."
+codex -C "$REPO_ROOT" --sandbox workspace-write --ask-for-approval on-request "Read the handoff at $HANDOFF. Act as the Codex reviewer. Write the Markdown review to $RESPONSE."
 test -s "$RESPONSE" && echo "Codex response written: $RESPONSE" || echo "Codex response missing or empty. If Codex printed Markdown instead, save it unchanged to: $RESPONSE"
 ```
 
@@ -143,7 +130,6 @@ When ingesting a reviewer response, do not accept feedback wholesale. Create a t
 At the top of the triage artifact, include an artifact links section with Markdown links to:
 
 - Handoff package.
-- Review request, or reviewer-specific requests when there are multiple.
 - Review response, or reviewer-specific responses when there are multiple.
 - Revised plan, when present.
 
@@ -164,14 +150,13 @@ For each classification, include a one-sentence rationale and provenance.
 
 After ingesting a review, report back to the user before implementation. Keep the chat digest short and action-oriented.
 
-Start the chat digest with a clickable Markdown link to the triage artifact. If useful, include links to the review request, review response, handoff package, and revised plan immediately after it. Put links before the summary so the user can open the details instantly.
+Start the chat digest with a clickable Markdown link to the triage artifact. If useful, include links to the review response, handoff package, and revised plan immediately after it. Put links before the summary so the user can open the details instantly.
 
 Use this shape:
 
 ```text
 Review digest:
 - Triage: [review triage](...)
-- Request: [review request](...)
 - Response: [review response](...)
 - Bottom line: ...
 - Counts: accepted N, rejected N, verify N, ask-user N.
@@ -180,7 +165,7 @@ Review digest:
 - Needs your decision: ...
 ```
 
-For multi-reviewer loops, use `Requests:` and `Responses:` lines with one link per reviewer instead of singular request/response links.
+For multi-reviewer loops, use `Responses:` with one link per reviewer instead of a singular response link.
 
 If there are no `ask-user` items and no major unresolved `verify` items, recommend the next action in one sentence. If there are `ask-user` items, ask the smallest number of questions needed before revising or implementing.
 
