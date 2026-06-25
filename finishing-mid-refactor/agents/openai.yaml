@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finish Mid-Refactor"
+  short_description: "Resume user-guided unfinished refactors"
+  default_prompt: "Use $finishing-mid-refactor to finish this intentionally unfinished refactor from my hints."
