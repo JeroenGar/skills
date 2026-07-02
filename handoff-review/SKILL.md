@@ -119,6 +119,8 @@ test -s "$RESPONSE" && echo "Codex response written: $RESPONSE" || echo "Codex r
 
 Also include the exact response artifact path or paths and tell the user to ask you to ingest the response after any command succeeds. If a reviewer cannot write the artifact, tell the user to ask the reviewer to print the exact Markdown review and save that text unchanged at that reviewer's response artifact path.
 
+End the command handoff by telling the user: "If you want me to run a reviewer command, babysit it, and automatically triage the response when it finishes, say so explicitly and I will do that."
+
 Only run a reviewer CLI yourself when the user separately and explicitly asks you to execute that command, the environment policy allows it, and the command does not require unsafe permission bypass flags. Never add `--dangerously-bypass-approvals-and-sandbox`, `--dangerously-skip-permissions`, or similar bypass flags to reviewer commands unless the user explicitly asks and policy permits it.
 
 Ask before preparing commands only when the handoff scope is unclear or the package appears to contain secrets or unrelated sensitive files.
