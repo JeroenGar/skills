@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fix CI"
+  short_description: "Reproduce, repair, and monitor CI failures"
+  default_prompt: "Use $fix-ci to diagnose and fix the failing CI, verify the checks locally, then push and monitor GitHub Actions."
