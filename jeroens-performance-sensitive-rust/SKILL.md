@@ -85,7 +85,13 @@ Split a file when unrelated responsibilities make the algorithm hard to follow, 
 
 Let each phase own concise diagnostics. Report summaries at phase boundaries and keep per-element logging out of hot loops.
 
-## Name Semantic Checkpoints
+## Readability & Documentation
+
+Make the code explain itself first through structure, domain names, and small semantic checkpoints. Add comments only when important intent or a contract still cannot be derived from the code. Before commenting confusing code, first check whether clearer names or structure can remove the need for the comment.
+
+Optimize for human scan review. A reviewer should be able to identify the model, assumptions, phase boundaries, state transitions, and policy choices without simulating every expression. Make context-dependent decisions visible through names, types, checkpoints, and concise comments: mechanically correct code can still be conceptually wrong because it was built from missing context or a false assumption.
+
+### Name Semantic Checkpoints
 
 Name a meaningful intermediate computation when the name identifies a stage in the algorithm, even if the value is consumed only once. Use these semantic checkpoints to make a sequence of transformations read in domain terms without explanatory comments.
 
@@ -103,6 +109,30 @@ select_best(normalized_candidates)
 ```
 
 Keep iterator checkpoints lazy unless later operations require materialization. Place a checkpoint near its consumer, choose a name from the algorithm's vocabulary, and skip vague names such as `tmp`, `data`, or `result`. Do not add a binding that merely restates an already obvious expression.
+
+### Comment Intent And Contracts
+
+Add a concise comment above a function when its name and signature do not fully communicate its purpose or contract. State what the function guarantees, assumes, or does differently from an obvious alternative. Mention preconditions, early-termination behavior, important side effects, or equivalence with a reference implementation when these matter. Do not restate parameters or narrate the implementation.
+
+Inside complex logic, use short single-line comments as guideposts for algorithm stages or non-obvious policy decisions. Do not comment each statement. Prefer a semantic checkpoint with a block initializer when several mechanical steps exist only to produce one meaningful value:
+
+```rust
+/// Restarts the search from a solution in `pool`.
+/// `pool` must be non-empty and sorted by increasing loss.
+fn restart(search: &mut Search, pool: &[Candidate], rng: &mut impl Rng) {
+    // Bias selection toward better solutions at the front of the pool.
+    let selected_solution = {
+        let sample = distribution.sample(rng).abs().min(0.999);
+        let selected_index = (sample * pool.len() as f32) as usize;
+
+        &pool[selected_index].solution
+    };
+
+    search.restore(selected_solution);
+}
+```
+
+Keep comments short and close to the code they explain. Update or remove them when the contract or algorithm changes; a stale comment is worse than no comment.
 
 ## Express Dataflow Functionally
 
