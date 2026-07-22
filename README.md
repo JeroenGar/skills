@@ -7,6 +7,7 @@ A small collection of reusable skills I find useful.
 - `handoff-review`: package implementation plans for independent agent review.
 - `finishing-mid-refactor`: finish intentionally unfinished user-guided refactors.
 - `fix-ci`: reproduce, repair, and monitor GitHub Actions failures.
+- `jeroens-performance-sensitive-rust`: apply Jeroen's style for designing robust, readable, performance-sensitive Rust software.
 
 ## Install in Codex
 
@@ -24,6 +25,10 @@ Use $skill-installer to install the skill at https://github.com/JeroenGar/skills
 Use $skill-installer to install the skill at https://github.com/JeroenGar/skills/tree/main/fix-ci
 ```
 
+```text
+Use $skill-installer to install the skill at https://github.com/JeroenGar/skills/tree/main/jeroens-performance-sensitive-rust
+```
+
 Restart Codex after installation so the new skill is picked up.
 
 ## Add to Claude.ai
@@ -31,7 +36,7 @@ Restart Codex after installation so the new skill is picked up.
 Claude.ai can use the same skill folder:
 
 1. Download or clone this repo.
-2. Zip the skill folder, such as `handoff-review/`, `finishing-mid-refactor/`, or `fix-ci/`.
+2. Zip the skill folder, such as `handoff-review/`, `finishing-mid-refactor/`, `fix-ci/`, or `jeroens-performance-sensitive-rust/`.
 3. Upload the zip as a custom Skill in Claude.ai's Skills settings.
 
 Claude uses the `SKILL.md` file. The `agents/openai.yaml` file is Codex-specific metadata and is not needed by Claude.
@@ -44,6 +49,7 @@ For Claude Code, clone this repo and point your project instructions at the skil
 @/absolute/path/to/this-repo/handoff-review/SKILL.md
 @/absolute/path/to/this-repo/finishing-mid-refactor/SKILL.md
 @/absolute/path/to/this-repo/fix-ci/SKILL.md
+@/absolute/path/to/this-repo/jeroens-performance-sensitive-rust/SKILL.md
 ```
 
 Inspect any third-party skill before installing or referencing it.
