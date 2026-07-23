@@ -1,20 +1,20 @@
 ---
-name: jeroens-performance-sensitive-rust
-description: Apply Jeroen's preferences for designing, implementing, refactoring, and reviewing robust, readable, performance-sensitive Rust software. Use for optimization algorithms, heuristic or exact search, numerical or geometric kernels, large-scale ETL and data processing, specialized data structures, incremental computation, profiling, and performance regression work.
+name: jeroens-rust
+description: Apply Jeroen's preferences for designing, implementing, refactoring, and reviewing Rust software with a focus on correctness, robustness, readability, and performance. Use for general Rust development, including application code, ETL and data processing, optimization algorithms, heuristic or exact search, numerical or geometric kernels, specialized data structures, incremental computation, profiling, and performance regression work.
 ---
 
-# Jeroen's Style Guide for Performance-Sensitive Rust
+# Jeroen's Rust
 
-Design robust, readable, performance-sensitive Rust in Jeroen's preferred style: keep correctness assumptions explicit, make experiments easy to change, preserve readable dataflow, and optimize measured bottlenecks.
+Design Rust in Jeroen's preferred style: make correctness assumptions and invariants explicit, fail loudly on broken internal state, preserve readable domain-oriented dataflow, keep abstractions narrow, and optimize measured bottlenecks without compromising robustness. Apply this style to ordinary application code, ETL pipelines, and performance-critical algorithms alike.
 
-When preferences compete, preserve correctness and explicit semantics first. Prefer readable dataflow and experimentability everywhere except a measured bottleneck, where verified performance may override stylistic preferences locally.
+When preferences compete, preserve correctness and explicit semantics first. Prefer readable, maintainable dataflow by default; let measured performance override style locally only when correctness remains independently verifiable.
 
 ## Work In This Order
 
 1. Trace the data, control, and mutation flow end to end.
 2. Define the observable result and the invariants that make it correct.
 3. Implement the naive behavior that is easiest to inspect and verify.
-4. Check it on small fixtures and edge cases, then profile an optimized build on the most representative workload it can handle.
+4. Check it on small fixtures and edge cases. When performance matters, profile an optimized build on the most representative workload it can handle.
 5. Design the production path for known input sizes and resource limits without optimizing for hypothetical scale.
 6. Before implementing a smarter bottleneck, introduce its narrow concrete abstraction and required API with the naive behavior still behind it. Verify that this refactor does not change behavior.
 7. Replace only the internals with the advanced data structure or algorithm. Keep the naive behavior as a bounded reference implementation or debug check.
@@ -275,7 +275,7 @@ After every optimization, compare the same correctness boundary and workload bef
 
 ## Review Checklist
 
-Before handing off performance-sensitive Rust work, verify:
+Before handing off Rust work, verify the applicable points:
 
 - Naive behavior is verified, placed behind the stable abstraction before optimization, and retained as a reference check.
 - A realistic optimized workload has been run.

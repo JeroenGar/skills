@@ -1,4 +1,0 @@
-interface:
-  display_name: "Jeroen's Performance-Sensitive Rust"
-  short_description: "Design robust, readable, performance-sensitive Rust software"
-  default_prompt: "Use $jeroens-performance-sensitive-rust to design or review this performance-sensitive Rust code according to Jeroen's style."
