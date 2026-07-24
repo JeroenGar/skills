@@ -262,11 +262,11 @@ Keep expensive redundant invariant checks in `debug_assert!`. Run a separate opt
 
 ## Specialize Only Verified Kernels
 
-Keep a clear general implementation until profiling identifies a kernel worth specializing. Limit custom traversal, specialized layout, forced inlining, or unsafe code to the measured kernel.
+Keep a clear general implementation until profiling identifies a kernel worth specializing. Limit custom traversal, specialized layout, or forced inlining to the measured kernel.
 
 Retain a small, obviously correct implementation for bounded test inputs as the oracle. Do not keep duplicate production paths unless runtime cross-checking is required; compare specialized results using exact or explicitly tolerant equality.
 
-Use unsafe code only when a safe implementation cannot meet a measured need. Keep the unsafe region small, document the invariant that makes it sound, and leave a check that would fail if the surrounding assumptions drift.
+Do not use `unsafe` as an optimization technique. Treat introducing or expanding unsafe code as forbidden unless the user explicitly authorizes it for the specific change. When authorized, keep the unsafe region small, document the invariant that makes it sound, and leave a check that would fail if the surrounding assumptions drift.
 
 ## Measure Behavior
 
@@ -306,4 +306,5 @@ Before handing off Rust work, verify the applicable points:
 - Broad consumers and enum mappings are exhaustive where evolution matters.
 - Numerical approximation and edge-case bias are explicit.
 - Specialized code is checked against a general implementation.
+- No unsafe code was introduced or expanded without explicit user permission.
 - Benchmarks are reproducible and measure meaningful behavior.
