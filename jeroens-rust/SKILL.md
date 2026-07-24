@@ -110,6 +110,19 @@ select_best(normalized_candidates)
 
 Keep iterator checkpoints lazy unless later operations require materialization. Place a checkpoint near its consumer, choose a name from the algorithm's vocabulary, and skip vague names such as `tmp`, `data`, or `result`. Do not add a binding that merely restates an already obvious expression.
 
+Use a semantic checkpoint especially when a `match` would otherwise contain a query, iterator chain, or other non-trivial derivation. Name the value being classified, then let the `match` focus only on its possible outcomes.
+
+```rust
+let existing_entry = entries
+    .iter_mut()
+    .find(|entry| entry.key == incoming.key);
+
+match existing_entry {
+    Some(entry) => entry.merge(incoming),
+    None => entries.push(incoming),
+}
+```
+
 ### Comment Intent And Contracts
 
 Add a concise comment above a function when its name and signature do not fully communicate its purpose or contract. State what the function guarantees, assumes, or does differently from an obvious alternative. Mention preconditions, early-termination behavior, important side effects, or equivalence with a reference implementation when these matter. Do not restate parameters or narrate the implementation.
