@@ -209,11 +209,12 @@ Use restoration strategies according to frequency:
 - Record overwritten values or use a compact snapshot for floating-point, lossy, cache-heavy, phase, branch, or independent-worker updates.
 - Use differential restoration when rebuilding expensive unchanged structures would dominate.
 
-Treat caches, counters, and indexes as derived state. Keep one authoritative source of truth, update derived state at the same mutation boundary, and provide a slow recomputation for debug checks.
+Treat caches, counters, and indexes as derived state. Keep one authoritative source of truth and update derived state at the same mutation boundary. For every invariant assertion, independently recalculate the expected value from authoritative objects only. Never use cached or derived values as inputs to the assertion oracle, even indirectly through helper methods; two stale values can agree and hide drift.
 
 ```rust
 state.apply(change);
-debug_assert_eq!(state.cached_metric(), recompute_metric(&state));
+let expected_metric = recompute_metric_from_items(state.items());
+debug_assert_eq!(state.cached_metric(), expected_metric);
 ```
 
 Run cheap local assertions after public mutations. Gate whole-state recomputation behind debug assertions or an explicit validation mode; sequence-level checks catch drift that field-local assertions miss.
@@ -328,7 +329,7 @@ Before handing off Rust work, verify the applicable points:
 - Inherent `impl` blocks order constructors, exposed mutations, private mutations, exposed reads, then private reads.
 - Collection transformations use semantic iterator combinators and materialize only at explicit boundaries.
 - Mutation has one owner and restores invariants.
-- Derived state is checked against authoritative state.
+- Every derived-state assertion recalculates its expected value exclusively from authoritative objects.
 - Tests exercise exposed contracts; internal bookkeeping is checked through debug assertions enabled in the test profile.
 - Broad consumers and enum mappings are exhaustive where evolution matters.
 - Numerical approximation and edge-case bias are explicit.
