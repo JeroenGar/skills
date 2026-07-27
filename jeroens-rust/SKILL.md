@@ -85,6 +85,21 @@ Split a file when unrelated responsibilities make the algorithm hard to follow, 
 
 Let each phase own concise diagnostics. Report summaries at phase boundaries and keep per-element logging out of hot loops.
 
+### Isolate Module Verification Support
+
+Use each non-trivial directory-backed module as a verification boundary. Put module-wide public-behavior tests in `tests.rs` and debug-only invariant recomputation in `assertions.rs`, declared from the module root:
+
+```rust
+mod assertions;
+
+#[cfg(test)]
+mod tests;
+```
+
+Keep implementation files focused on domain logic. Let them contain only concise calls into `assertions.rs`, while `tests.rs` exercises the module through its exposed API.
+
+Keep public preconditions and cheap local assertions visible at the top of the methods they guard. Move only bulky, redundant, debug-only validation into `assertions.rs`, where it must recalculate exclusively from authoritative state.
+
 ## Readability & Documentation
 
 Make the code explain itself first through structure, domain names, and small semantic checkpoints. Add comments only when important intent or a contract still cannot be derived from the code. Before commenting confusing code, first check whether clearer names or structure can remove the need for the comment.
@@ -327,6 +342,7 @@ Before handing off Rust work, verify the applicable points:
 - Experimental policies are isolated from mechanism.
 - Long computations expose meaningful algorithm stages through named checkpoints.
 - Inherent `impl` blocks order constructors, exposed mutations, private mutations, exposed reads, then private reads.
+- Non-trivial directory-backed modules isolate public-behavior tests in `tests.rs` and debug invariant logic in `assertions.rs`.
 - Collection transformations use semantic iterator combinators and materialize only at explicit boundaries.
 - Mutation has one owner and restores invariants.
 - Every derived-state assertion recalculates its expected value exclusively from authoritative objects.
