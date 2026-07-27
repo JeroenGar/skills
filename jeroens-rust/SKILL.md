@@ -91,6 +91,18 @@ Make the code explain itself first through structure, domain names, and small se
 
 Optimize for human scan review. A reviewer should be able to identify the model, assumptions, phase boundaries, state transitions, and policy choices without simulating every expression. Make context-dependent decisions visible through names, types, checkpoints, and concise comments: mechanically correct code can still be conceptually wrong because it was built from missing context or a false assumption.
 
+### Order Impl Blocks By State Flow And Visibility
+
+Order methods in an inherent `impl` as follows:
+
+1. Constructors and factory functions.
+2. Exposed mutating methods.
+3. Private mutating helpers.
+4. Exposed read-only methods.
+5. Private read-only helpers.
+
+Treat methods visible at the type's intended boundary, including `pub(crate)` or `pub(super)`, as exposed. Within each group, follow the typical lifecycle or call sequence rather than sorting methods alphabetically.
+
 ### Name Semantic Checkpoints
 
 Name a meaningful intermediate computation when the name identifies a stage in the algorithm, even if the value is consumed only once. Use these semantic checkpoints to make a sequence of transformations read in domain terms without explanatory comments.
@@ -300,6 +312,7 @@ Before handing off Rust work, verify the applicable points:
 - Cheap rejection precedes expensive exact work.
 - Experimental policies are isolated from mechanism.
 - Long computations expose meaningful algorithm stages through named checkpoints.
+- Inherent `impl` blocks order constructors, exposed mutations, private mutations, exposed reads, then private reads.
 - Collection transformations use semantic iterator combinators and materialize only at explicit boundaries.
 - Mutation has one owner and restores invariants.
 - Derived state is checked against authoritative state.
