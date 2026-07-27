@@ -260,6 +260,19 @@ Use a float wrapper or explicit comparison only where a total order is required.
 
 Use monotonic proxies such as squared distance when they avoid expensive work without changing the decision. Preserve the exact calculation when the actual value is required.
 
+## Test Public Contracts, Debug-Assert Internal Bookkeeping
+
+Test each type through the same exposed API its real callers use. Do not widen visibility or add test-only bypasses to call private transaction stages. Verify successful results, public errors, rollback, and observable state through exposed accessors. Bypassing the public flow can create states and error paths callers cannot reach.
+
+Use `debug_assert!` for redundant internal bookkeeping checks: derived state matches authoritative state, ledgers remain synchronized, and private stages receive conditions already guaranteed by the public flow. Do not promote internal invariant failures to public error variants merely to make them directly testable. Keep trust-boundary validation and public preconditions in production code.
+
+Ensure tests execute internal invariant checks explicitly:
+
+```toml
+[profile.test]
+debug-assertions = true
+```
+
 ## Validate Inputs And Fail Loudly On Broken State
 
 Validate every relied-on shape, range, cardinality, ordering, and cross-field relationship of external data once, as it enters the internal representation. For streaming input, validate each record or chunk before downstream stages rely on it.
@@ -316,6 +329,7 @@ Before handing off Rust work, verify the applicable points:
 - Collection transformations use semantic iterator combinators and materialize only at explicit boundaries.
 - Mutation has one owner and restores invariants.
 - Derived state is checked against authoritative state.
+- Tests exercise exposed contracts; internal bookkeeping is checked through debug assertions enabled in the test profile.
 - Broad consumers and enum mappings are exhaustive where evolution matters.
 - Numerical approximation and edge-case bias are explicit.
 - Specialized code is checked against a general implementation.
