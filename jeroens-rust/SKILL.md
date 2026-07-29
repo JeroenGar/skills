@@ -1,30 +1,26 @@
 ---
 name: jeroens-rust
-description: Apply Jeroen's preferences for designing, implementing, refactoring, and reviewing Rust software with a focus on correctness, robustness, readability, and performance. Use for general Rust development, including application code, ETL and data processing, optimization algorithms, heuristic or exact search, numerical or geometric kernels, specialized data structures, incremental computation, profiling, and performance regression work.
+description: Use when designing, implementing, refactoring, or reviewing algorithmic Rust in Jeroen's preferred style, including optimization and search, ETL and data-processing logic, numerical kernels, incremental computation, and specialized stateful data structures.
 ---
 
 # Jeroen's Rust
 
-Design Rust in Jeroen's preferred style: make correctness assumptions and invariants explicit, fail loudly on broken internal state, preserve readable domain-oriented dataflow, keep abstractions narrow, and optimize measured bottlenecks without compromising robustness. Apply this style to ordinary application code, ETL pipelines, and performance-critical algorithms alike.
+Follow Jeroen's Rust preferences: make correctness assumptions and invariants explicit, fail loudly on broken internal state, preserve readable domain-oriented dataflow, keep abstractions narrow, and optimize measured bottlenecks without compromising robustness. Apply this style to ordinary application code, ETL pipelines, and performance-critical algorithms alike.
 
-When preferences compete, preserve correctness and explicit semantics first. Prefer readable, maintainable dataflow by default; let measured performance override style locally only when correctness remains independently verifiable.
+When these preferences compete, preserve correctness and explicit semantics first. Prefer readable, maintainable dataflow by default; let measured performance override style locally only when correctness remains independently verifiable.
 
-## Work In This Order
+## Work From Correctness To Evidence
 
 1. Trace the data, control, and mutation flow end to end.
-2. Define the observable result and the invariants that make it correct.
-3. Implement the naive behavior that is easiest to inspect and verify.
-4. Check it on small fixtures and edge cases. When performance matters, profile an optimized build on the most representative workload it can handle.
-5. Design the production path for known input sizes and resource limits without optimizing for hypothetical scale.
-6. Before implementing a smarter bottleneck, introduce its narrow concrete abstraction and required API with the naive behavior still behind it. Verify that this refactor does not change behavior.
-7. Replace only the internals with the advanced data structure or algorithm. Keep the naive behavior as a bounded reference implementation or debug check.
-8. Recheck the same correctness boundary and workload; keep the optimization only when its measured benefit justifies the additional state and invariants.
-
-Treat state and indexes required by the chosen algorithm, dataflow, or known resource bounds as part of the baseline. Use profiling to gate optional caches, specialized indexes, parallelism, and low-level tuning.
+2. Define the observable result, correctness invariants, and known input or resource limits.
+3. Choose the simplest implementation that meets those limits. Treat state and indexes inherent to the chosen algorithm as baseline; do not design for hypothetical scale.
+4. Verify small fixtures and edge cases. When performance matters, measure a representative optimized workload.
+5. Optimize only a known or measured bottleneck. Prefer the existing ownership boundary; add an abstraction only when it protects an invariant, supports real reuse or variation, or isolates a replaceable kernel.
+6. Recheck the same correctness boundary and workload. Keep additional state and complexity only when the benefit justifies them.
 
 ## Separate Representations By Responsibility
 
-Use distinct types for distinct responsibilities:
+Use distinct types when responsibilities require different data, invariants, or operations. Do not create a second type only to label the same value as proposed, packed, cached, or committed; let the owning container provide that context.
 
 - Keep external or deserialized records at the trust boundary.
 - Validate and normalize boundary data as it enters the system. Materialize bounded inputs into immutable, precomputed internal data; process large or streaming inputs incrementally instead of collecting the whole dataset.
@@ -65,19 +61,23 @@ Wrap a standard collection in a small concrete type once it carries a domain-spe
 
 Keep frequently accessed fields compact. Split hot and cold data only when measurement shows that carrying the cold fields through the kernel matters.
 
-## Prefer Local Computation Over Memory Traffic
+## Shape Data And Hot Paths
 
-Treat memory traffic, working-set size, and access predictability as first-class algorithm costs. A handful of simple arithmetic operations on data already in registers or cache is often cheaper than a cache miss, pointer chase, or load from a large derived table.
+Treat memory traffic, working-set size, and access predictability as algorithm costs. Prefer compact contiguous storage, traversal in storage order, and batching that reuses nearby data. Avoid pointer-rich structures in hot paths unless their operations justify the locality cost.
 
-Favor compact working sets, contiguous storage, traversal in storage order, and batching that reuses nearby data. Avoid pointer-rich or scattered structures in hot paths unless their operations justify the locality cost.
+Recompute cheap derived values from nearby authoritative data instead of adding storage, indirection, and invalidation logic. Precompute only when the work is expensive or reused enough to justify it; compare both approaches on an optimized representative workload.
 
-Recompute cheap derived values from nearby authoritative data when storing them would add another memory stream, indirection, or invalidation logic. This reduces derived state and improves correctness as well as locality.
+Keep tight loops free of allocation, cloning, formatting, and temporary hash tables. Allocate reusable buffers outside the loop and derive each result from an immutable baseline rather than cumulatively modifying prior results.
 
-Store or precompute values when their computation is genuinely expensive, they are reused enough to amortize the memory access, or they can be kept compactly beside the data that consumes them. Compare recomputation against lookup on a representative optimized workload rather than assuming a cache is faster.
+Order work from cheap and likely to reject toward expensive and exact. Stop when the caller's question is answered; distinguish "find any" from "collect all" when early return avoids work.
+
+Add parallelism only after measuring a CPU bottleneck with independent work. Give workers independent mutable state, share immutable input, and combine results deterministically when reproducibility matters.
 
 ## Keep Algorithm Boundaries Small
 
 Make each phase expose the smallest meaningful input and output contract. Keep orchestration focused on the sequence of phases, not their internal decisions.
+
+Keep one authoritative implementation of each domain behavior. Reuse it for validation, diagnostics, simulation, and reporting—using isolated state or rollback where necessary—instead of re-encoding its decisions elsewhere.
 
 Keep temporary concepts local to the phase that needs them. Promote a type or abstraction only after it has a second real use or forms a valuable correctness boundary.
 
@@ -85,30 +85,11 @@ Split a file when unrelated responsibilities make the algorithm hard to follow, 
 
 Let each phase own concise diagnostics. Report summaries at phase boundaries and keep per-element logging out of hot loops.
 
-### Isolate Module Verification Support
+## Keep Algorithm Logic Readable
 
-Use each non-trivial directory-backed module as a verification boundary. Put module-wide public-behavior tests in `tests.rs` and debug-only invariant recomputation in `assertions.rs`, declared from the module root:
+Make structure, domain names, and semantic checkpoints expose the algorithm's model, assumptions, phases, state transitions, and policy choices. A reviewer should not need to simulate individual expressions to understand the flow.
 
-```rust
-mod assertions;
-
-#[cfg(test)]
-mod tests;
-```
-
-Keep implementation files focused on domain logic. Let them contain only concise calls into `assertions.rs`, while `tests.rs` exercises the module through its exposed API.
-
-Keep public preconditions and cheap local assertions visible at the top of the methods they guard. Move only bulky, redundant, debug-only validation into `assertions.rs`, where it must recalculate exclusively from authoritative state.
-
-## Readability & Documentation
-
-Make the code explain itself first through structure, domain names, and small semantic checkpoints. Add comments only when important intent or a contract still cannot be derived from the code. Before commenting confusing code, first check whether clearer names or structure can remove the need for the comment.
-
-Optimize for human scan review. A reviewer should be able to identify the model, assumptions, phase boundaries, state transitions, and policy choices without simulating every expression. Make context-dependent decisions visible through names, types, checkpoints, and concise comments: mechanically correct code can still be conceptually wrong because it was built from missing context or a false assumption.
-
-### Order Impl Blocks By State Flow And Visibility
-
-Order methods in an inherent `impl` as follows:
+Order inherent `impl` methods by lifecycle:
 
 1. Constructors and factory functions.
 2. Exposed mutating methods.
@@ -116,101 +97,73 @@ Order methods in an inherent `impl` as follows:
 4. Exposed read-only methods.
 5. Private read-only helpers.
 
-Treat methods visible at the type's intended boundary, including `pub(crate)` or `pub(super)`, as exposed. Within each group, follow the typical lifecycle or call sequence rather than sorting methods alphabetically.
+Treat visibility at the type's intended boundary, including `pub(crate)` and `pub(super)`, as exposed. Within each group, follow lifecycle rather than alphabetical order.
 
-### Name Semantic Checkpoints
-
-Name a meaningful intermediate computation when the name identifies a stage in the algorithm, even if the value is consumed only once. Use these semantic checkpoints to make a sequence of transformations read in domain terms without explanatory comments.
-
-Use a block initializer when deriving the checkpoint requires local setup, branching, or mutable scratch state. Return only the stage value from the block so the mechanics stay scoped behind its name.
+Use a named semantic checkpoint when a non-trivial intermediate value represents a meaningful algorithm stage. Use a block initializer to keep local setup, branching, or scratch state behind that name. Keep the checkpoint near its consumer and lazy unless materialization is required. Compute and name a non-trivial query before matching on its outcome, so the match expresses the decision rather than the query mechanics. Do not name obvious expressions.
 
 ```rust
-let normalized_candidates = {
-    let scale = normalization_scale(&candidates);
+let best_feasible_candidate = {
+    let candidates = generate_candidates(state);
     candidates
-        .into_iter()
-        .map(move |candidate| candidate.normalized(scale))
+        .filter(|candidate| constraints.allow(candidate))
+        .min_by_key(|candidate| candidate.cost())
 };
 
-select_best(normalized_candidates)
-```
-
-Keep iterator checkpoints lazy unless later operations require materialization. Place a checkpoint near its consumer, choose a name from the algorithm's vocabulary, and skip vague names such as `tmp`, `data`, or `result`. Do not add a binding that merely restates an already obvious expression.
-
-Use a semantic checkpoint especially when a `match` would otherwise contain a query, iterator chain, or other non-trivial derivation. Name the value being classified, then let the `match` focus only on its possible outcomes.
-
-```rust
-let existing_entry = entries
-    .iter_mut()
-    .find(|entry| entry.key == incoming.key);
-
-match existing_entry {
-    Some(entry) => entry.merge(incoming),
-    None => entries.push(incoming),
+match best_feasible_candidate {
+    Some(candidate) => apply(candidate),
+    None => stop_search(),
 }
 ```
 
-### Comment Intent And Contracts
+When a fallible phase is sequential, make its successful path read top to bottom, propagate intermediate failures uniformly, and handle the final outcome separately.
 
-Add a concise comment above a function when its name and signature do not fully communicate its purpose or contract. State what the function guarantees, assumes, or does differently from an obvious alternative. Mention preconditions, early-termination behavior, important side effects, or equivalence with a reference implementation when these matter. Do not restate parameters or narrate the implementation.
+Use comments only for contracts, assumptions, important side effects, early termination, or non-obvious policy. Prefer names and structure over commentary; remove stale comments.
 
-Inside complex logic, use short single-line comments as guideposts for algorithm stages or non-obvious policy decisions. Do not comment each statement. Prefer a semantic checkpoint with a block initializer when several mechanical steps exist only to produce one meaningful value:
+## Express Dataflow Clearly
 
-```rust
-/// Restarts the search from a solution in `pool`.
-/// `pool` must be non-empty and sorted by increasing loss.
-fn restart(search: &mut Search, pool: &[Candidate], rng: &mut impl Rng) {
-    // Bias selection toward better solutions at the front of the pool.
-    let selected_solution = {
-        let sample = distribution.sample(rng).abs().min(0.999);
-        let selected_index = (sample * pool.len() as f32) as usize;
+Prefer iterator pipelines for transformations, queries, reductions, and short-circuiting when they read directly from input to result. Use semantic combinators, including `itertools` when it gives the domain operation a clearer name. Validate equal lengths before zipping when truncation would hide malformed input.
 
-        &pool[selected_index].solution
-    };
+Break long pipelines at named semantic checkpoints when their stages would otherwise be hidden.
 
-    search.restore(selected_solution);
-}
-```
+Keep closures short and expression-oriented. Pass a function or method directly when a closure only forwards its arguments.
 
-Keep comments short and close to the code they explain. Update or remove them when the contract or algorithm changes; a stale comment is worse than no comment.
+Return `impl Iterator` from reusable traversals when callers benefit from composition or short-circuiting. Materialize only for sorting, shuffling, indexing, reuse, ownership transfer, or a snapshot before mutation; do not collect merely to resume iteration.
 
-## Express Dataflow Functionally
+Use a normal loop when stateful control flow is the algorithmic story: mutation, rollback, borrow coordination, or several evolving accumulators.
 
-Prefer iterator pipelines for transformations, queries, and reductions. Use combinators whose names expose the operation—`map`, `filter` or `filter_map`, `flat_map`, `chain`, and `zip`—and finish with terminals such as `any`, `all`, `find` or `find_map`, `min_by_key`, `sum`, `fold`, or `collect`. Choose these over manual accumulators, flags, or nested loops when the pipeline reads directly from input to result.
+## Separate Policy From Mechanism
 
-Use `itertools` when it gives the domain operation a name. Prefer `tuple_combinations` or `combinations` for pairwise search, `unique` or `unique_by` for uniqueness, `sorted_by_cached_key` for expensive ranking keys, `collect_vec` for an explicit `Vec`, and `izip!` for several aligned sequences. Validate equal lengths before `zip` or `izip!` when truncation would hide malformed input.
+Mechanism generates and applies possible operations while preserving state invariants. Policy decides which operations are eligible and preferred.
 
-Keep closures short and expression-oriented. Pass a function or method directly when a closure only forwards its arguments. Use `filter_map`, `find_map`, and `then_some` when absence is part of the transformation instead of filtering and then unwrapping.
+Keep core state and mutation concrete. Isolate a policy only when it genuinely varies, such as eligibility, ordering, evaluation, sampling, termination, or progress reporting. Use a direct closure or named function for an obvious stable policy; introduce a trait when real interchangeable implementations exist.
 
-Return `impl Iterator` from reusable traversals to keep the abstraction clean without allocating an intermediate `Vec`. Let callers compose, short-circuit, or collect only when their use case requires ownership. Materialize deliberately when sorting, shuffling, indexing, reusing results, transferring ownership, or collecting a snapshot before mutating the source. Do not collect only to resume iteration.
+Use generics or `impl Trait` for policies called from hot code. Use dynamic dispatch only when runtime heterogeneity is required and its cost is irrelevant or measured.
 
-Use a normal loop when mutation, rollback, early exit, borrow coordination, or several evolving accumulators are the algorithmic story. Do not conceal stateful control flow or allocation behind a clever iterator chain, and do not replace a clear pipeline with a manual loop without measured reason.
-
-## Put Abstractions Around Policy
-
-Keep core state concrete. Introduce a trait when a real policy varies, such as evaluation, sampling, filtering, termination, or progress reporting.
-
-Use generics or `impl Trait` for policies called from hot code so calls are statically dispatched and monomorphized. Use dynamic dispatch only when runtime heterogeneity is required and its cost is irrelevant or measured.
-
-Separate the mechanism that explores possibilities from the mechanism that evaluates one possibility. Let the explorer own traversal and refinement; let the evaluator own the expensive domain calculation. Pass the current bound into the evaluator when it can stop once the result is known to be uncompetitive.
-
-Keep control-plane hooks outside the algorithmic state. Reporting and cancellation should observe or interrupt work without owning the state being optimized.
-
-## Isolate Experimental Semantics
-
-Separate eligibility, ordering, and application:
+Separate selection into three responsibilities:
 
 - Eligibility decides whether an operation is allowed.
 - Ordering chooses among allowed operations.
 - Application performs the chosen operation and restores invariants.
 
-Keep non-trivial or heuristic ordering in a named key, score, or comparison function, especially when it is likely to change through experimentation. Use a direct closure for an obvious stable order.
+```rust
+let selected_move = candidate_moves(state)
+    .filter(|candidate| is_eligible(state, candidate))
+    .min_by_key(|candidate| ordering_key(state, candidate));
 
-Model semantic outcomes before numeric quality. If outcomes such as valid, invalid, complete, or partial have different meanings, encode them explicitly and define their precedence. Compare numeric quality only within compatible outcomes; do not bury domain precedence in sentinel values or an unexplained weighted scalar.
+if let Some(candidate) = selected_move {
+    state.apply(candidate);
+}
+```
 
-Represent a proposed operation faithfully. If it changes several parts of the state, preserve every effect for validation and application even when ranking reduces it to a smaller key.
+Here, `candidate_moves` is the exploration mechanism, `is_eligible` and `ordering_key` express policy, and `apply` owns mutation and invariant restoration.
 
-Use deterministic tie-breakers in tests, benchmarks, and seeded runs. Treat randomized tie-breaking as an explicit search policy.
+Keep non-trivial or heuristic ordering in a named key, score, or comparison function. Model semantic outcomes such as valid, invalid, complete, or partial explicitly and define their precedence before comparing numeric quality. Do not hide domain precedence in sentinel values or unexplained weighted scalars.
+
+Represent a proposed operation faithfully. Preserve every effect needed for validation and application even when ordering reduces it to a smaller key. Use deterministic tie-breakers in tests, benchmarks, and seeded runs; treat randomized tie-breaking as an explicit policy.
+
+Separate exploration from evaluation. Let the explorer own traversal and refinement, and the evaluator own the expensive domain calculation. Pass the current bound into the evaluator when it can stop once the result is known to be uncompetitive.
+
+Keep reporting and cancellation outside the algorithmic state. These hooks may observe or interrupt the work, but should not own the state being optimized.
 
 ## Control Mutation
 
@@ -224,27 +177,24 @@ Use restoration strategies according to frequency:
 - Record overwritten values or use a compact snapshot for floating-point, lossy, cache-heavy, phase, branch, or independent-worker updates.
 - Use differential restoration when rebuilding expensive unchanged structures would dominate.
 
-Treat caches, counters, and indexes as derived state. Keep one authoritative source of truth and update derived state at the same mutation boundary. For every invariant assertion, independently recalculate the expected value from authoritative objects only. Never use cached or derived values as inputs to the assertion oracle, even indirectly through helper methods; two stale values can agree and hide drift.
+Treat caches, counters, and indexes as derived state. Keep one authoritative source of truth and update derived state at the same mutation boundary.
+
+## Isolate Verification From Algorithm Logic
+
+Keep implementation files focused on algorithmic and domain logic. For each non-trivial directory-backed module, put tests of exposed behavior in `tests.rs` and complex invariant checks in `assertions.rs`, declared from the module root:
 
 ```rust
-state.apply(change);
-let expected_metric = recompute_metric_from_items(state.items());
-debug_assert_eq!(state.cached_metric(), expected_metric);
+mod assertions;
+
+#[cfg(test)]
+mod tests;
 ```
 
-Run cheap local assertions after public mutations. Gate whole-state recomputation behind debug assertions or an explicit validation mode; sequence-level checks catch drift that field-local assertions miss.
+In `tests.rs`, exercise structs and functions through the same exposed API used by real callers, covering observable success, errors, rollback, and resulting state. Test private helpers implicitly through this flow; do not test them directly or widen visibility for tests.
 
-## Shape The Hot Path
+Use assertions for internal invariants. Keep public preconditions and cheap local assertions beside the methods they guard, preferably as a single line. Move multi-step invariant recomputation to `assertions.rs`; invoke it with `debug_assert!` when it would add production overhead.
 
-Avoid allocation, cloning, formatting, and temporary hash-table construction inside tight loops.
-
-Allocate reusable buffers outside the loop, reserve realistic capacity, and clear or overwrite them between evaluations. When repeatedly deriving a value from the same baseline, update a buffer from the immutable baseline instead of cumulatively modifying the previous result; this also avoids numerical drift.
-
-Order work from cheap and likely to reject toward expensive and exact. Use bounds and summaries to fail fast, and stop as soon as the caller's question is answered. Provide separate “find any” and “collect all” paths when the first can return early.
-
-Extract a helper when it is reused, hides genuine complexity, or creates a valuable test boundary. Avoid helpers that only rename one expression.
-
-Add parallelism only after identifying independent work and measuring a CPU bottleneck. Give workers independent mutable state, share immutable input, and combine results through an explicit deterministic rule when reproducibility matters.
+Recompute expected state independently from authoritative objects only. Never use cached or derived values as assertion-oracle inputs, even indirectly; two stale values can agree and hide drift. Do not promote broken internal invariants to public errors merely to make them testable. Ensure the test profile enables debug assertions; when relevant, exercise them on a representative optimized workload and benchmark without them unless they are part of production.
 
 ## Make Evolution Compile-Visible
 
@@ -276,19 +226,6 @@ Use a float wrapper or explicit comparison only where a total order is required.
 
 Use monotonic proxies such as squared distance when they avoid expensive work without changing the decision. Preserve the exact calculation when the actual value is required.
 
-## Test Public Contracts, Debug-Assert Internal Bookkeeping
-
-Test each type through the same exposed API its real callers use. Do not widen visibility or add test-only bypasses to call private transaction stages. Verify successful results, public errors, rollback, and observable state through exposed accessors. Bypassing the public flow can create states and error paths callers cannot reach.
-
-Use `debug_assert!` for redundant internal bookkeeping checks: derived state matches authoritative state, ledgers remain synchronized, and private stages receive conditions already guaranteed by the public flow. Do not promote internal invariant failures to public error variants merely to make them directly testable. Keep trust-boundary validation and public preconditions in production code.
-
-Ensure tests execute internal invariant checks explicitly:
-
-```toml
-[profile.test]
-debug-assertions = true
-```
-
 ## Validate Inputs And Fail Loudly On Broken State
 
 Validate every relied-on shape, range, cardinality, ordering, and cross-field relationship of external data once, as it enters the internal representation. For streaming input, validate each record or chunk before downstream stages rely on it.
@@ -298,8 +235,6 @@ Return errors at trust boundaries such as parsing, files, network input, and pub
 Assert internal invariants where mutation or transformation could break them. Panic rather than turn an impossible internal state into a plausible fallback result.
 
 Use warnings only for explicitly tolerated defects whose continuation semantics are defined.
-
-Keep expensive redundant invariant checks in `debug_assert!`. Run a separate optimized build with debug assertions to exercise them on realistic workloads; profile and benchmark without those checks unless they are part of the production configuration.
 
 ## Specialize Only Verified Kernels
 
@@ -326,29 +261,3 @@ Measure both the isolated kernel and the end-to-end workload. Separate query, up
 For stochastic algorithms, compare distributions of runtime and result quality across repeated runs. Do not trust one favorable outcome.
 
 After every optimization, compare the same correctness boundary and workload before and after. Keep a change only when the measured benefit justifies its complexity.
-
-## Review Checklist
-
-Before handing off Rust work, verify the applicable points:
-
-- Naive behavior is verified, placed behind the stable abstraction before optimization, and retained as a reference check.
-- A realistic optimized workload has been run.
-- Representations have clear responsibilities and lifetimes.
-- Data layout matches measured access and update patterns.
-- Collections with domain-specific invariants are encapsulated behind APIs that preserve them.
-- Hot paths favor compact working sets, predictable access, and cheap recomputation over scattered derived state.
-- Hot loops reuse storage and avoid accidental work.
-- Cheap rejection precedes expensive exact work.
-- Experimental policies are isolated from mechanism.
-- Long computations expose meaningful algorithm stages through named checkpoints.
-- Inherent `impl` blocks order constructors, exposed mutations, private mutations, exposed reads, then private reads.
-- Non-trivial directory-backed modules isolate public-behavior tests in `tests.rs` and debug invariant logic in `assertions.rs`.
-- Collection transformations use semantic iterator combinators and materialize only at explicit boundaries.
-- Mutation has one owner and restores invariants.
-- Every derived-state assertion recalculates its expected value exclusively from authoritative objects.
-- Tests exercise exposed contracts; internal bookkeeping is checked through debug assertions enabled in the test profile.
-- Broad consumers and enum mappings are exhaustive where evolution matters.
-- Numerical approximation and edge-case bias are explicit.
-- Specialized code is checked against a general implementation.
-- No unsafe code was introduced or expanded without explicit user permission.
-- Benchmarks are reproducible and measure meaningful behavior.
