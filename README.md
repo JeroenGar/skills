@@ -8,6 +8,7 @@ A small collection of reusable skills I find useful.
 - `finishing-mid-refactor`: finish intentionally unfinished user-guided refactors.
 - `fix-ci`: reproduce, repair, and monitor GitHub Actions failures.
 - `jeroens-rust`: apply Jeroen's preferences for correct, robust, readable, and performant Rust.
+- `profile-guided-optimization`: run measured, profiler-guided optimization campaigns without changing conceptual behavior.
 
 ## Install in Codex
 
@@ -29,6 +30,10 @@ Use $skill-installer to install the skill at https://github.com/JeroenGar/skills
 Use $skill-installer to install the skill at https://github.com/JeroenGar/skills/tree/main/jeroens-rust
 ```
 
+```text
+Use $skill-installer to install the skill at https://github.com/JeroenGar/skills/tree/main/profile-guided-optimization
+```
+
 Restart Codex after installation so the new skill is picked up.
 
 ## Add to Claude.ai
@@ -36,7 +41,7 @@ Restart Codex after installation so the new skill is picked up.
 Claude.ai can use the same skill folder:
 
 1. Download or clone this repo.
-2. Zip the skill folder, such as `handoff-review/`, `finishing-mid-refactor/`, `fix-ci/`, or `jeroens-rust/`.
+2. Zip the skill folder, such as `handoff-review/`, `finishing-mid-refactor/`, `fix-ci/`, `jeroens-rust/`, or `profile-guided-optimization/`.
 3. Upload the zip as a custom Skill in Claude.ai's Skills settings.
 
 Claude uses the `SKILL.md` file. The `agents/openai.yaml` file is Codex-specific metadata and is not needed by Claude.
@@ -50,6 +55,7 @@ For Claude Code, clone this repo and point your project instructions at the skil
 @/absolute/path/to/this-repo/finishing-mid-refactor/SKILL.md
 @/absolute/path/to/this-repo/fix-ci/SKILL.md
 @/absolute/path/to/this-repo/jeroens-rust/SKILL.md
+@/absolute/path/to/this-repo/profile-guided-optimization/SKILL.md
 ```
 
 Inspect any third-party skill before installing or referencing it.

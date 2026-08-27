@@ -1,0 +1,4 @@
+interface:
+  display_name: "Profile-guided optimization"
+  short_description: "Run measured, profiler-guided optimization loops"
+  default_prompt: "Use $profile-guided-optimization to optimize this algorithm without changing its conceptual behavior."
