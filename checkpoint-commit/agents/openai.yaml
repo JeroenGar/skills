@@ -1,0 +1,4 @@
+interface:
+  display_name: "Checkpoint commit"
+  short_description: "Commit and push a reviewed work checkpoint"
+  default_prompt: "Use $checkpoint-commit to commit and push the current reviewed slice, then ensure the branch has a draft PR."
